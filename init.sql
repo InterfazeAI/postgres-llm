@@ -62,9 +62,11 @@ BEGIN
         FOR UPDATE SKIP LOCKED
         LIMIT batch_size
     LOOP
-        BEGIN
-            UPDATE llm.queue SET status = 'running', attempts = attempts + 1 WHERE id = job.id;
+        -- Outside the BEGIN/EXCEPTION block on purpose: a failure rolls back
+        -- everything inside it, which would undo this increment and retry forever.
+        UPDATE llm.queue SET status = 'running', attempts = attempts + 1 WHERE id = job.id;
 
+        BEGIN
             prompt_text := job.prompt;
             target_columns := job.target_columns;
             col_keys := akeys(job.prompt_values);
